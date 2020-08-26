@@ -1,0 +1,1 @@
+export const bytesToGB = (byteSize: number) => byteSize / Math.pow(1024, 3)

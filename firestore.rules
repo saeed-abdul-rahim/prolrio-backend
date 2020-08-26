@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function userId() {
+    	return request.auth.uid;
+    }
+    
+    function isAuthenticated() {
+    	return request.auth != null;
+    }
+    
+    function isAuthorized(groupId) {
+    	return request.auth.token.claims.hasAny([
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': true },
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'provider', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'learner', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'admin' },
+      	{ 'groupId': groupId, 'role': 'provider' },
+      	{ 'groupId': groupId, 'role': 'learner' },
+      ])
+    }
+    
+    function isAdmin(groupId) {
+    	return request.auth.token.claims.hasAny([
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': true },
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'admin' }
+      ])
+    }
+    
+		function isProvider(groupId) {
+    	return request.auth.token.claims.hasAny([
+      	{ 'groupId': groupId, 'role': 'provider', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'provider' }
+      ])
+    }
+    
+    function getUser(userId) {
+    	return get(/databases/$(database)/documents/v1/db/users/$(userId))
+    }
+    
+    function getSubject(subjectId) {
+    	return get(/databases/$(database)/documents/v1/db/subjects/$(subjectId))
+    }
+    
+    function hasSubjectAccess(subjectDoc) {
+    	return userId() in subjectDoc.data.users ||
+      	userId() in subjectDoc.data.learner ||
+        userId() in subjectDoc.data.provider ||
+        userId() in subjectDoc.data.admin
+    }
+    
+    function canSeeUser(userDoc) {
+    	return resource.data.groupId.hasAny(userDoc.data.admin) ||
+      				resource.data.requests.hasAny(userDoc.data.admin) ||
+              resource.data.groupId.hasAny(userDoc.data.provider)
+    }
+    
+    match /v1/db/users/{id} {
+    	allow read: if userId() == id || canSeeUser(getUser(request.auth.uid));
+      match /{db}/{documents=**} {
+      	allow create, update, read: if userId() == id
+      }
+    }
+    
+    match /v1/db/groups/{id} {
+			allow read: if isAuthenticated() && isAuthorized(resource.data.groupId);
+    }
+    
+    match /v1/db/sections/{id} {
+			allow read: if isAuthenticated() && isAuthorized(resource.data.groupId);
+    }
+    
+    match /v1/db/subjects/{id} {
+			allow read: if isAuthenticated() && isAuthorized(resource.data.groupId);
+    }
+    
+    match /v1/db/entities/{id} {
+    	allow read: if isAuthenticated() && isAdmin(resource.data.groupId) ||
+      																		(hasSubjectAccess(getSubject(resource.data.subjectId)))
+    }
+    
+    match /v1/db/analytics/{id} {
+    	allow read: if isAuthenticated() && isAdmin(resource.data.groupId) ||
+      																		(hasSubjectAccess(getSubject(resource.data.subjectId)))
+    }
+    
+    match /v1/db/metadata/{id} {
+    	allow read: if isAuthenticated() && isAuthorized(resource.data.id);
+    }
+    
+    match /{path=**}/userAnalytics/{doc} {
+    	allow read: if isAuthenticated() && (isAdmin(resource.data.groupId) || isProvider(resource.data.groupId));
+    }
+    
+    match /v1/db/tiers/{id} {
+    	allow read: if true
+    }
+    
+    match /v1/db/support/{id} {
+    	allow write: if true
+    }
+    
+  }
+}

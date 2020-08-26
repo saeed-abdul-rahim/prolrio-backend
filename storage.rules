@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+  
+  	function canRead(groupId) {
+    	return request.auth.token.claims.hasAny([
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': true },
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'provider', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'learner', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'admin' },
+      	{ 'groupId': groupId, 'role': 'provider' },
+      	{ 'groupId': groupId, 'role': 'learner' }
+      ])
+    }
+    
+    function canCreate(groupId) {
+    	return request.auth.token.claims.hasAny([
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': true },
+      	{ 'groupId': groupId, 'role': 'admin', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'provider', 'sudo': false },
+      	{ 'groupId': groupId, 'role': 'admin' },
+      	{ 'groupId': groupId, 'role': 'provider' }
+      ])
+    }
+    
+    match /{groupId}/{fileType}/{file} {
+      allow read: if canRead(groupId);
+			allow create: if canCreate(groupId);
+    }
+  }
+}
