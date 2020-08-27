@@ -16,6 +16,21 @@ export async function createStripeUser(firebaseUID: string, auth: SignInType) {
     }
 }
 
+export async function upadateStripeUser(stripeId: string, auth: SignInType) {
+    try {
+        const { email, phone } = auth
+        let data
+        if (email) {
+            data = { email }
+        } else if (phone) {
+            data = { phone }
+        }
+        return await stripe.customers.update(stripeId, data)
+    } catch (err) {
+        throw err
+    }
+}
+
 export async function getPaymentMethod(stripeId: string) {
     try {
         return await stripe.paymentMethods.list({
