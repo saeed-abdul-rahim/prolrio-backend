@@ -3,7 +3,7 @@ import * as group from "../models/group"
 import { Role } from '../models/common/schema'
 import { forbidden } from '../responseHandler/errorHandler';
 
-export function isAuthorized(opts: { hasRole: Array<Role>, allowSameUser?: boolean }) {
+export function isAuthorized(opts: { hasRole?: Array<Role>, allowSameUser?: boolean }) {
    return async (req: Request, res: Response, next: Function) => {
         const { claims, uid } = res.locals
         const { id } = req.params
@@ -15,7 +15,7 @@ export function isAuthorized(opts: { hasRole: Array<Role>, allowSameUser?: boole
             return forbidden(res);
         else if(!groupid)
             return forbidden(res);
-        else if (groupid && typeof groupid === "string") {
+        else if (groupid && typeof groupid === "string" && opts.hasRole) {
             const groupData = await group.get(groupid)
             opts.hasRole.map(role => {
                 if (groupData[role].includes(uid)) {

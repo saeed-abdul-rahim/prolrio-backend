@@ -8,7 +8,8 @@ import {
     request,
     updateRole,
     cancelRequest,
-    acceptRequest
+    acceptRequest,
+    updateUser
 } from '../controllers/user'
 import {
     addPaymentMethod,
@@ -34,6 +35,12 @@ export function userHandler(app: Application) {
     app.post(`${userRoute}/request`,
         isAuthenticated,
         request
+    )
+
+    app.patch(`${userRoute}/:id`,
+        isAuthenticated,
+        isAuthorized({ allowSameUser: true }),
+        updateUser
     )
 
     app.patch(`${userRoute}/request`,
