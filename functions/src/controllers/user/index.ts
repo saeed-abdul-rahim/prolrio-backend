@@ -40,9 +40,7 @@ export async function update(req: Request, res: Response) {
 export async function signUp(req: Request, res: Response) {
     try {
         const { displayName, email, password, phone } = req.body
-        if (!displayName)
-            return badRequest(res, 'Name required')
-        else if (!phone && !email && !password)
+        if (!phone && !email && !password)
             return badRequest(res, 'Phone / Email required')
         else if (email && !password)
             return badRequest(res, 'Password required')
@@ -52,8 +50,8 @@ export async function signUp(req: Request, res: Response) {
                 uid = (await admin.auth().getUserByPhoneNumber(phone)).uid
             } else {
                 uid = (await admin.auth().getUserByEmail(email)).uid
+                await admin.auth().updateUser(uid, { displayName, password })
             }
-            await admin.auth().updateUser(uid, { displayName, password })
             const { id } = await createStripeUser(uid, { email, phone })
             await user.set(uid, {
                 name: displayName,
@@ -154,7 +152,6 @@ export async function create(req: Request, res: Response) {
             }
             await user.set(uid, newUserData)
         }
-        await sendMail(newUserEmail(email, groupName))
         await claims.set(uid, { groupId, role })
         await group.addUser(groupData, role, uid)
 
@@ -165,6 +162,9 @@ export async function create(req: Request, res: Response) {
             idempotencyKey: uid + Date.now().toString(),
             quantity: 1
         })
+        if (email) {
+            await sendMail(newUserEmail(email, groupName))
+        }
         return successCreated(res)
     } catch (err) {
         console.log(err)
@@ -211,6 +211,36 @@ export async function updateRole(req: Request, res: Response) {
         }
     } catch (err) {
         console.log(err)
+        return serverError(res, err)
+    }
+}
+
+export async function updateUser(req: Request, res: Response) {
+    try {
+        const { uid } = res.locals
+        const { name, email, phone, dob, gender, photoUrl } = req.body
+        const userData = await user.get(uid)
+        if (!userData.email && email) {
+            userData.email = email
+        }
+        if (!userData.phone && phone) {
+            userData.phone = phone
+        }
+        if (name) {
+            userData.name = name
+        }
+        if (dob) {
+            userData.dob = dob
+        }
+        if (gender) {
+            userData.gender = gender
+        }
+        if (photoUrl) {
+            userData.photoUrl = photoUrl
+        }
+        await user.update(userData)
+        return successUpdated(res)
+    } catch (err) {
         return serverError(res, err)
     }
 }

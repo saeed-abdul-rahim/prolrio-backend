@@ -8,7 +8,8 @@ import {
     request,
     updateRole,
     cancelRequest,
-    acceptRequest
+    acceptRequest,
+    updateUser
 } from '../controllers/user'
 import {
     addPaymentMethod,
@@ -45,6 +46,12 @@ export function userHandler(app: Application) {
         isAuthenticated,
         isAuthorized({ hasRole: ['admin'] }),
         updateRole
+    )
+
+    app.patch(userRoute,
+        isAuthenticated,
+        isAuthorized({ allowSameUser: true }),
+        updateUser
     )
 
     app.delete(`${userRoute}/request/:groupId`,
