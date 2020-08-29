@@ -37,12 +37,6 @@ export function userHandler(app: Application) {
         request
     )
 
-    app.patch(`${userRoute}/:id`,
-        isAuthenticated,
-        isAuthorized({ allowSameUser: true }),
-        updateUser
-    )
-
     app.patch(`${userRoute}/request`,
         isAuthenticated,
         acceptRequest
@@ -52,6 +46,12 @@ export function userHandler(app: Application) {
         isAuthenticated,
         isAuthorized({ hasRole: ['admin'] }),
         updateRole
+    )
+
+    app.patch(`${userRoute}/:id`,
+        isAuthenticated,
+        isAuthorized({ allowSameUser: true }),
+        updateUser
     )
 
     app.delete(`${userRoute}/request/:groupId`,
