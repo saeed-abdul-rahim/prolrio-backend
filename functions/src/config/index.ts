@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 
 export const title = 'PROLR'
 export const url = {
-    base: 'https://prolrio-dev.web.app',
+    base: 'https://prolr.io',
     support: '/support',
     home: '/console',
     logo: '/assets/icons/icon-72x72.png'
