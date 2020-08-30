@@ -5,29 +5,38 @@ export const actionCodeSettings = {
     url: `${url}/set-password`
 }
 
-export function newUserEmail(to: string, groupName: string) {
+export function newUserEmail(to: string, name: string) {
     return mailOptions(
         to,
         'Welcome!',
-        welcome(groupName))
+        welcome(name))
 }
 
-export function contentEmail(to: string, newContent: boolean = false, groupName: string, entityName: string, subjectName: string, entityImgUrl?: string, action?: string) {
+export function contentEmail(to: string, newContent: boolean = false, name: string, entityName: string, subjectName: string, entityImgUrl?: string, action?: string) {
     let subject
     if (newContent) {
         subject = `New content added in ${subjectName}`
     } else {
-        subject = `Request from ${groupName}`
+        subject = `Request from ${name}`
     }
     return mailOptions(
         to,
         subject,
-        viewContent(newContent, groupName, entityName, subjectName, entityImgUrl, action)
+        viewContent(newContent, name, entityName, subjectName, entityImgUrl, action)
     )
 }
 
-function welcome(groupName: string) {
+function welcome(name: string, from: 'group' | 'user' = 'group') {
     const { base, support, home } = url
+    let content = ''
+    let type = ''
+    if (from === 'group') {
+        type = 'invitation'
+        content = `${name} has invited you to their institution. Just press the button below to see your pending invitation.`
+    } else {
+        type = 'request'
+        content = `${name} has requested for joining your institution. Just press the button below to see your requests.`
+    }
     return `
         <!-- THIS EMAIL WAS BUILT AND TESTED WITH LITMUS http://litmus.com -->
         <!-- IT WAS RELEASED UNDER THE MIT LICENSE https://opensource.org/licenses/MIT -->
@@ -45,7 +54,7 @@ function welcome(groupName: string) {
 
         <!-- HIDDEN PREHEADER TEXT -->
         <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Lato', Helvetica, Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
-            You have a new invitation from ${groupName}!
+            You have a new ${type} from ${name}!
         </div>
 
         <table border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -89,7 +98,7 @@ function welcome(groupName: string) {
                     <!-- COPY -->
                     <tr>
                         <td bgcolor="#ffffff" align="left" style="padding: 20px 30px 40px 30px; color: #666666; font-family: 'Lato', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: 400; line-height: 25px;" >
-                        <p style="margin: 0;">${groupName} has invited you to their institution. Just press the button below to see your pending invitation.</p>
+                        <p style="margin: 0;">${content}</p>
                         </td>
                     </tr>
                     <!-- BULLETPROOF BUTTON -->
@@ -196,7 +205,7 @@ function welcome(groupName: string) {
     `
 }
 
-function viewContent(newContent = false, groupName: string, entityName: string, subjectName: string, entityImgUrl?: string, action?: string) {
+function viewContent(newContent = false, name: string, entityName: string, subjectName: string, entityImgUrl?: string, action?: string) {
     const { base, support } = url
     let imgUrl = ''
     let heading = ''
@@ -217,7 +226,7 @@ function viewContent(newContent = false, groupName: string, entityName: string, 
         heading = `New content added in ${subjectName}`
         content = `${entityName} has been added to ${subjectName}`
     } else {
-        heading = `Request from ${groupName}`
+        heading = `Request from ${name}`
         content = `Please ${action} ${entityName} in subject ${subjectName}`
     }
     return `

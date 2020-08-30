@@ -264,7 +264,17 @@ export async function request(req: Request, res: Response) {
             await group.setRequest(groupData, uid)
             await user.setRequest(userData, groupId)
         }
-        return successCreated(res)
+        successCreated(res)
+        if (!groupRequests.includes(groupId)) {
+            const { admin: groupAdmins } = groupData
+            const allAdmins = await user.getByIds(groupAdmins)
+            allAdmins.forEach(async a => {
+                if (a.email) {
+                    await sendMail(newUserEmail(a.email, userData.name || userData.email))
+                }
+            })
+        }
+        return
     } catch (err) {
         console.log(err)
         return serverError(res, err)

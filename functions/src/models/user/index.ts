@@ -16,6 +16,20 @@ export async function get(uid: string): Promise<UserInterface> {
     }
 }
 
+export async function getByIds(uids: string[]): Promise<UserInterface[]> {
+    try {
+        return await Promise.all(uids.map(async id => {
+            try {
+                return await get(id)
+            } catch (_) {
+                return new User({}).get()
+            }
+        }))        
+    } catch (err) {
+        throw err
+    }
+}
+
 export async function getByEmail(email: string): Promise<UserInterface> {
     try {
         return await getOneByCondition('email', email)
