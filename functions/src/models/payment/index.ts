@@ -1,6 +1,54 @@
 import { stripe } from '../../config'
-import { StripeItem, StripeUsage, IdempotencyKeyType } from './schema'
+import { StripeItem, StripeUsage, IdempotencyKeyType, QueryType, GroupPriceInterface, GroupPrice } from './schema'
 import { UsageDataType, SubscriptionItem, SignInType } from '../common/schema'
+import { productsRef } from '../db'
+
+export async function getPrice(id: string): Promise<GroupPriceInterface> {
+    try {
+        const doc = await productsRef.doc(id).get()
+        if (!doc.exists) throw new Error('Metadata not found')
+        const data = doc.data() as GroupPriceInterface
+        return new GroupPrice(data).get()
+    } catch (err) {
+        throw err
+    }
+}
+
+export async function getProducts(id: string, type: QueryType): Promise<GroupPriceInterface[]> {
+    try {
+        const docs = await productsRef.where(type, '==', id).get()
+        if (!docs.empty) throw new Error('Metadata not found')
+        return docs.docs.map(d => {
+            return new GroupPrice(d.data() as GroupPriceInterface).get()
+        })
+    } catch (err) {
+        throw err
+    }
+}
+
+export async function addProduct(groupPrice: GroupPriceInterface): Promise<boolean> {
+    try {
+        const { priceId } = groupPrice
+        const dataToInsert = new GroupPrice(groupPrice).get()
+        await productsRef.doc(priceId).set(dataToInsert)
+        return true
+    } catch (err) {
+        throw err
+    }
+}
+
+export async function removeProducts(id: string, type: QueryType): Promise<boolean> {
+    try {
+        const docs = await getProducts(id, type)
+        docs.forEach(async d => {
+            const { priceId } = d
+            await productsRef.doc(priceId).delete()
+        })
+        return true
+    } catch (err) {
+        throw err
+    }
+}
 
 export async function createStripeUser(firebaseUID: string, auth: SignInType) {
     try {
@@ -16,7 +64,7 @@ export async function createStripeUser(firebaseUID: string, auth: SignInType) {
     }
 }
 
-export async function upadateStripeUser(stripeId: string, auth: SignInType) {
+export async function updateStripeUser(stripeId: string, auth: SignInType) {
     try {
         const { email, phone } = auth
         let data
@@ -89,6 +137,37 @@ export async function refundPaymentIntent(intentId: string) {
         return await stripe.refunds.create({
             payment_intent: intentId
         })
+    } catch (err) {
+        throw err
+    }
+}
+
+export async function createProduct(name: string, groupId: string) {
+    try {
+        return await stripe.products.create({
+            name,
+            metadata: { groupId }
+        })
+    } catch (err) {
+        throw err
+    }
+}
+
+export async function createPrice(productId: string, amount: number, groupId: string, recurring = false) {
+    try {
+        const price = await stripe.prices.create({
+            currency: 'INR',
+            unit_amount: amount,
+            product: productId,
+            metadata: { groupId },
+            recurring: recurring ? { interval: 'month' } : undefined
+        })
+        await addProduct({
+            groupId,
+            productId,
+            priceId: price.id
+        })
+        return price
     } catch (err) {
         throw err
     }

@@ -11,6 +11,7 @@ export interface MetadataInterface extends TimestampInterface {
     phone: string
     description?: string
     subscriptionStatus?: string
+    paid: boolean
 }
 
 export type MetadataType = TimestampType & {
@@ -21,6 +22,7 @@ export type MetadataType = TimestampType & {
     phone?: string
     description?: string
     subscriptionStatus?: string
+    paid?: boolean
 }
 
 export class Metadata extends Timestamp implements MetadataInterface {
@@ -31,6 +33,7 @@ export class Metadata extends Timestamp implements MetadataInterface {
     email: string
     phone: string
     subscriptionStatus: string
+    paid: boolean
 
     constructor(data: MetadataInterface) {
         super(data)
@@ -41,6 +44,7 @@ export class Metadata extends Timestamp implements MetadataInterface {
         this.phone = data.phone ? data.phone : ''
         this.description = data.description ? data.description : ''
         this.subscriptionStatus = data.subscriptionStatus ? data.subscriptionStatus : ''
+        this.paid = data.paid ? true : false
     }
 
     get(): MetadataInterface {
@@ -50,7 +54,8 @@ export class Metadata extends Timestamp implements MetadataInterface {
             name: this.name,
             type: this.type,
             email: this.email,
-            phone: this.phone
+            phone: this.phone,
+            paid: this.paid
         }
         if (this.description) data.description = this.description
         if (this.subscriptionStatus) data.subscriptionStatus = this.subscriptionStatus

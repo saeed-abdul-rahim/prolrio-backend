@@ -1,3 +1,6 @@
+import { TimestampInterface, TimestampType } from "../common/schema"
+import { Timestamp } from "../common"
+
 type Limit = {
     priceId: string
     allowed: number
@@ -9,7 +12,7 @@ type Amount = {
     year: number
 }
 
-export interface TierInterface {
+export interface TierInterface extends TimestampInterface {
     tierId: string
     productId: string
     name: string
@@ -21,11 +24,10 @@ export interface TierInterface {
     storage: Limit
     amount: Amount
     duration: number
-    createdAt: number
-    updatedAt: number
+    transactionReduction: number
 }
 
-export type TierType = {
+export type TierType = TimestampType & {
     tierId?: string
     productId?: string
     name?: string
@@ -37,11 +39,10 @@ export type TierType = {
     storage?: Limit
     amount?: Amount
     duration?: number
-    createdAt?: number
-    updatedAt?: number
+    transactionReduction?: number
 }
 
-export class Tier implements TierInterface {
+export class Tier extends Timestamp implements TierInterface {
     tierId: string
     productId: string
     name: string
@@ -53,10 +54,10 @@ export class Tier implements TierInterface {
     entity: Limit
     storage: Limit
     duration: number
-    createdAt: number
-    updatedAt: number
+    transactionReduction: number
 
     constructor(data: TierType) {
+        super(data)
         this.tierId = data.tierId ? data.tierId : ''
         this.productId = data.productId ? data.productId : ''
         this.name = data.name ? data.name : ''
@@ -68,12 +69,12 @@ export class Tier implements TierInterface {
         this.entity = this.setLimit(data.entity)
         this.storage = this.setLimit(data.storage)
         this.duration = data.duration ? data.duration : -1
-        this.createdAt = data.createdAt && data.createdAt !== 0 ? data.createdAt : Date.now()
-        this.updatedAt = data.updatedAt && data.updatedAt !== 0 ? data.updatedAt : Date.now()
+        this.transactionReduction = data.transactionReduction ? data.transactionReduction : 0
     }
 
     get(): TierInterface {
         return {
+            ...super.get(),
             tierId: this.tierId,
             productId: this.productId,
             name: this.name,
@@ -85,8 +86,7 @@ export class Tier implements TierInterface {
             entity: this.entity,
             storage: this.storage,
             duration: this.duration,
-            createdAt: this.createdAt,
-            updatedAt: this.updatedAt
+            transactionReduction: this.transactionReduction
         }
     }
 

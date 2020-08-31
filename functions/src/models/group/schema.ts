@@ -19,6 +19,7 @@ export interface GroupInterface extends CommonInterface {
     tierId: string
     subscriptionStatus: SubscriptionStatus
     subscriptionItems: SubscriptionItem[]
+    paid: boolean
 }
 
 export type GroupType = CommonType & {
@@ -38,6 +39,7 @@ export type GroupType = CommonType & {
     tierId?: string
     subscriptionStatus?: SubscriptionStatus
     subscriptionItems?: SubscriptionItem[]
+    paid?: boolean
 }
 
 export class Group extends Common implements GroupInterface {
@@ -57,6 +59,7 @@ export class Group extends Common implements GroupInterface {
     tierId: string
     subscriptionStatus: SubscriptionStatus
     subscriptionItems: SubscriptionItem[]
+    paid: boolean
 
     constructor(data: GroupType) {
         super(data)
@@ -76,6 +79,7 @@ export class Group extends Common implements GroupInterface {
         this.tierId = data.tierId ? data.tierId : ''
         this.subscriptionStatus = data.subscriptionStatus ? data.subscriptionStatus : 'active'
         this.subscriptionItems = data.subscriptionItems ? data.subscriptionItems : []
+        this.paid = data.paid ? true : false
     }
 
     get(): GroupInterface {
@@ -96,7 +100,8 @@ export class Group extends Common implements GroupInterface {
             currentStorage: this.currentStorage,
             tierId: this.tierId,
             subscriptionStatus: this.subscriptionStatus,
-            subscriptionItems: this.subscriptionItems
+            subscriptionItems: this.subscriptionItems,
+            paid: this.paid
         }
     }
 

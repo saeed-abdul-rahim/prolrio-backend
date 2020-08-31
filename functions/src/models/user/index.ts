@@ -323,6 +323,24 @@ export async function removePayment(user: UserInterface, paymentSource: string):
     }
 }
 
+export async function createGroupSubscription(user: UserInterface, subscriptionId: string): Promise<UserInterface> {
+    try {
+        user.groupSubscriptions.unshift(subscriptionId)
+        return await update(user)
+    } catch (err) {
+        throw err
+    }
+}
+
+export async function removeGroupSubscription(user: UserInterface, subscriptionId: string): Promise<UserInterface> {
+    try {
+        user.groupSubscriptions = user.groupSubscriptions.filter(id => id !== subscriptionId)
+        return await update(user)
+    } catch (err) {
+        throw err
+    }
+}
+
 async function getOneByCondition(field: string, value: string): Promise<UserInterface> {
     try {
         const doc = await usersRef.where(field, '==', value).get()

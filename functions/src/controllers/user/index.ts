@@ -7,7 +7,7 @@ import * as subject from '../../models/subject'
 import * as analytics from '../../models/analytics'
 import * as claims from '../../models/userClaims'
 import * as tier from '../../models/tier'
-import { createStripeUser, upadateStripeUser } from '../../models/payment'
+import { createStripeUser, updateStripeUser } from '../../models/payment'
 import { newUserEmail } from '../helper/mail'
 import { serverError, badRequest, forbidden, tierExpired, limitExceeded } from '../../responseHandler/errorHandler'
 import { successCreated, successResponse, successUpdated } from '../../responseHandler/successHandler'
@@ -225,11 +225,11 @@ export async function updateUser(req: Request, res: Response) {
         const providers = fireUser.providerData.map(p => p.providerId)
         if (!providers.includes('password') && email) {
             userData.email = email
-            await upadateStripeUser(stripeId, { email })
+            await updateStripeUser(stripeId, { email })
         }
         if (!providers.includes('phone') && phone) {
             userData.phone = phone
-            await upadateStripeUser(stripeId, { phone })
+            await updateStripeUser(stripeId, { phone })
         }
         if (name) {
             userData.name = name

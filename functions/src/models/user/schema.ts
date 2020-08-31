@@ -27,6 +27,7 @@ export interface UserInterface extends CommonInterface {
     subscriptionStatus: SubscriptionStatus
     subscriptionItems: SubscriptionItem[]
     paymentMethodId: string
+    groupSubscriptions: string[]
 }
 
 export type UserType = CommonType & {
@@ -52,6 +53,7 @@ export type UserType = CommonType & {
     subscriptionStatus?: SubscriptionStatus
     subscriptionItems?: SubscriptionItem[]
     paymentMethodId?: string
+    groupSubscriptions?: string[]
 }
 
 export class User extends Common implements UserInterface {
@@ -77,6 +79,7 @@ export class User extends Common implements UserInterface {
     subscriptionStatus: SubscriptionStatus
     subscriptionItems: SubscriptionItem[]
     paymentMethodId: string
+    groupSubscriptions: string[]
 
     constructor(data: UserType) {
         super(data)
@@ -102,6 +105,7 @@ export class User extends Common implements UserInterface {
         this.subscriptionStatus = data.subscriptionStatus ? data.subscriptionStatus : 'active'
         this.subscriptionItems = data.subscriptionItems ? data.subscriptionItems : []
         this.paymentMethodId = data.paymentMethodId ? data.paymentMethodId : ''
+        this.groupSubscriptions = data.groupSubscriptions ? uniqueArr(data.groupSubscriptions) : []
     }
 
     get(): UserInterface {
@@ -128,7 +132,8 @@ export class User extends Common implements UserInterface {
             subscriptionId: this.subscriptionId,
             subscriptionStatus: this.subscriptionStatus,
             subscriptionItems: this.subscriptionItems,
-            paymentMethodId: this.paymentMethodId
+            paymentMethodId: this.paymentMethodId,
+            groupSubscriptions: this.groupSubscriptions
         }
     }
 

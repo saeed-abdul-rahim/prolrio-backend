@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import * as claims from '../../models/userClaims'
 import * as group from '../../models/group'
+import * as earning from '../../models/earning'
 import * as metadata from '../../models/metadata'
 import * as user from '../../models/user'
 import * as section from '../../models/section'
@@ -14,6 +15,7 @@ import { roles } from '../../models/common'
 import { serverError, badRequest, forbidden, unauthorized, limitExceeded, tierExpired } from '../../responseHandler/errorHandler'
 import { successResponse, successUpdated } from '../../responseHandler/successHandler'
 import { paymentUsage } from '../helper/payment'
+import { GroupInterface } from '../../models/group/schema'
 
 export async function create(req: Request, res: Response) {
     try {
@@ -56,7 +58,8 @@ export async function create(req: Request, res: Response) {
             type: 'group',
             email,
             phone,
-            subscriptionStatus: subscriptionStatus
+            subscriptionStatus: subscriptionStatus,
+            paid: false
         })
         await paymentUsage({
             data: userData,
@@ -138,6 +141,8 @@ export async function remove(req: Request, res: Response) {
     }
 }
 
+// REMOVE USER
+
 export async function removeUser(req: Request, res: Response) {
     try {
         const { groupId, id } = req.params
@@ -181,6 +186,42 @@ export async function removeUser(req: Request, res: Response) {
     }
 }
 
+export async function removeUserFromGroup(id: string, groupId: string) {
+    try {
+        const userClaims = await claims.get(id)
+        const customClaims = claims.checkIfExist(userClaims)
+        const filterClaim = claims.findGroup(customClaims, groupId)
+        const userData = await user.get(id)
+        if (!userData.groupId.includes(groupId)) throw new Error('User not in group')
+        else {
+            const groupData = await group.get(groupId)
+            const { role } = filterClaim
+            const sectionIds = await section.removeUserFromRoleAll(id, groupId, role)
+            const subjects = await subject.removeUserFromRoleAll(id, groupId, role)
+            const subjectIds = subjects.map(s => s.subjectId).reduce((a: string[], b) => a.concat(b), [])
+            const entityId = subjects.map(s => s.entityId).reduce((acc, curr) => acc.concat(curr), [])
+            await Promise.all(entityId.map(async e => {
+                await analytics.removeEntityFromUser(e, id)
+            }))
+            await claims.remove(customClaims, groupId, id)
+            await user.removeFromGroup(userData, groupId, sectionIds, subjectIds)
+            await group.removeUser(groupData, id)
+
+            await paymentUsage({
+                data: groupData,
+                type: 'user',
+                action: 'delete',
+                idempotencyKey: id + Date.now().toString(),
+                quantity: 1
+            })
+        }
+    } catch (err) {
+        throw err
+    }
+}
+
+// REQUESTS
+
 export async function acceptRequest(req: Request, res: Response) {
     try {
         const { groupData } = res.locals
@@ -188,8 +229,9 @@ export async function acceptRequest(req: Request, res: Response) {
         if (!uid || !role) return badRequest(res, 'User ID and Role required')
         else if (!roles.includes(role)) return badRequest(res, 'Invalid Role')
         else {
-            const { groupId } = groupData
+            const { groupId, paid } = groupData as GroupInterface
             const userData = await user.get(uid)
+            const { stripeId } = userData
             await group.acceptRequest(groupData, uid, role)
             await user.acceptRequest(userData, groupId, role)
             await claims.set(uid, { groupId, role })
@@ -201,6 +243,15 @@ export async function acceptRequest(req: Request, res: Response) {
                 idempotencyKey: uid + Date.now().toString(),
                 quantity: 1
             })
+
+            if (paid) {
+                const earningData = await earning.get(groupId)
+                const { recurring, priceId } = earningData
+                if (recurring) {
+                    const subscription = await payment.createSubscription(stripeId, [{ price: priceId, quantity: 1 }])
+                    await user.createGroupSubscription(userData, subscription.id)
+                }
+            }
 
             return successUpdated(res)
         }
@@ -229,11 +280,52 @@ export async function updateGroupName(req: Request, res: Response) {
     try {
         const { groupData } = res.locals
         const { name } = req.body
-        const { groupId } = groupData
+        const { groupId } = groupData as GroupInterface
         if (!name)
             return badRequest(res, 'Name required')
         await group.update({ groupId, groupName: name })
         await metadata.update({ id: groupId, name })
+        return successUpdated(res)
+    } catch (err) {
+        console.log(err)
+        return serverError(res, err)
+    }
+}
+
+export async function updateEarning(req: Request, res: Response) {
+    try {
+        const { groupData } = res.locals
+        const { recurring, amount } = req.body
+        const { groupId, groupName } = groupData as GroupInterface
+        const earningData = await earning.checkIfEarningExist(groupId)
+        const product = await payment.createProduct(groupName, groupId)
+        const price = await payment.createPrice(product.id, amount, groupId, recurring)
+        const productData = {
+            productId: product.id,
+            priceId: price.id,
+            amount,
+            recurring
+        }
+        if (earningData) {
+            const newData = {
+                ...earningData,
+                ...productData,
+            }
+            await earning.update(newData)
+        } else {
+            await earning.set({
+                groupId,
+                ...productData
+            })
+        }
+        await metadata.update({
+            id: groupId,
+            paid: true
+        })
+        await group.update({
+            groupId,
+            paid: true
+        })
         return successUpdated(res)
     } catch (err) {
         console.log(err)
