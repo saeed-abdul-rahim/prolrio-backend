@@ -195,6 +195,7 @@ export async function removeUserFromGroup(id: string, groupId: string) {
         if (!userData.groupId.includes(groupId)) throw new Error('User not in group')
         else {
             const groupData = await group.get(groupId)
+            const { paid } = groupData
             const { role } = filterClaim
             const sectionIds = await section.removeUserFromRoleAll(id, groupId, role)
             const subjects = await subject.removeUserFromRoleAll(id, groupId, role)
@@ -214,6 +215,10 @@ export async function removeUserFromGroup(id: string, groupId: string) {
                 idempotencyKey: id + Date.now().toString(),
                 quantity: 1
             })
+            
+            if (paid) {
+                payment.cancelSubscription
+            }
         }
     } catch (err) {
         throw err
