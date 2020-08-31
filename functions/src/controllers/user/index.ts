@@ -2,12 +2,13 @@ import { Request, Response } from 'express'
 import * as admin from 'firebase-admin'
 import * as user from '../../models/user'
 import * as group from '../../models/group'
+import * as earning from '../../models/earning'
+import * as payment from '../../models/payment'
 import * as section from '../../models/section'
 import * as subject from '../../models/subject'
 import * as analytics from '../../models/analytics'
 import * as claims from '../../models/userClaims'
 import * as tier from '../../models/tier'
-import { createStripeUser, updateStripeUser } from '../../models/payment'
 import { newUserEmail } from '../helper/mail'
 import { serverError, badRequest, forbidden, tierExpired, limitExceeded } from '../../responseHandler/errorHandler'
 import { successCreated, successResponse, successUpdated } from '../../responseHandler/successHandler'
@@ -52,7 +53,7 @@ export async function signUp(req: Request, res: Response) {
                 uid = (await admin.auth().getUserByEmail(email)).uid
                 await admin.auth().updateUser(uid, { displayName, password })
             }
-            const { id } = await createStripeUser(uid, { email, phone })
+            const { id } = await payment.createStripeUser(uid, { email, phone })
             await user.set(uid, {
                 name: displayName,
                 email,
@@ -225,11 +226,11 @@ export async function updateUser(req: Request, res: Response) {
         const providers = fireUser.providerData.map(p => p.providerId)
         if (!providers.includes('password') && email) {
             userData.email = email
-            await updateStripeUser(stripeId, { email })
+            await payment.updateStripeUser(stripeId, { email })
         }
         if (!providers.includes('phone') && phone) {
             userData.phone = phone
-            await updateStripeUser(stripeId, { phone })
+            await payment.updateStripeUser(stripeId, { phone })
         }
         if (name) {
             userData.name = name
@@ -301,9 +302,19 @@ export async function acceptRequest(req: Request, res: Response) {
         const { uid } = res.locals
         const { groupId } = req.body
         const groupData = await group.get(groupId)
+        const { paid } = groupData
         const userData = await user.get(uid)
+        const { stripeId } = userData
         await group.removeGroupRequest(groupData, uid)
         await user.removeGroupRequest(userData, groupId)
+        if (paid) {
+            const earningData = await earning.get(groupId)
+            const { recurring, priceId } = earningData
+            if (recurring) {
+                const subscription = await payment.createSubscription(stripeId, [{ price: priceId, quantity: 1 }])
+                await user.createGroupSubscription(userData, subscription.id)
+            }
+        }
         return successUpdated(res)
     } catch (err) {
         console.log(err)
