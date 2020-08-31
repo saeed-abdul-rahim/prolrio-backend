@@ -190,7 +190,30 @@ export async function acceptRequest(req: Request, res: Response) {
         else {
             const { groupId } = groupData
             const userData = await user.get(uid)
+
+            let subjectIds: string[] = []
+            try {
+                const subjects = await subject.getAllFromGroup(groupId)
+                if (subjects.length > 0) {
+                    subjectIds = subjects.map(sub => sub.subjectId).reduce((acc: string[], curr) => acc.concat(curr), [])
+                    await Promise.all(subjects.map(async subData => {
+                        try {
+                            if (role === 'provider')
+                                return await subject.addUser(uid, subData)
+                            else if (role === 'learner')
+                                return await subject.addUser(uid, subData, 'learner')
+                            else
+                                return
+                        } catch (_) {
+                            subjectIds = []
+                            return
+                        }
+                    }))
+                }
+            } catch (_) { subjectIds = [] }
+
             await group.acceptRequest(groupData, uid, role)
+            userData.subjectId.push(...subjectIds)
             await user.acceptRequest(userData, groupId, role)
             await claims.set(uid, { groupId, role })
             
